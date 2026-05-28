@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "TankPilot",
+    "slug": "tankpilot",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "splash": {
+      "backgroundColor": "#2563eb"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "de.tankpilot.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "TankPilot benötigt deinen Standort, um Tankstellen in deiner Nähe zu finden.",
+        "NSLocationAlwaysUsageDescription": "TankPilot benötigt deinen Standort, um Tankstellen in deiner Nähe zu finden."
+      }
+    },
+    "android": {
+      "package": "de.tankpilot.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TankPilot benötigt deinen Standort, um Tankstellen in deiner Nähe zu finden."
+        }
+      ]
+    ]
+  }
+}

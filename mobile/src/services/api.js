@@ -9,8 +9,7 @@ import axios from 'axios';
  * Für Produktion: echte Backend-URL eintragen.
  */
 const DEV_BACKEND_URL = 'http://192.168.1.XXX:3001'; // ← Deine lokale IP hier!
-const PROD_BACKEND_URL = 'https://deine-backend-url.de';
-
+const PROD_BACKEND_URL = 'https://tankpilot-backend.onrender.com';
 const BASE_URL = __DEV__ ? DEV_BACKEND_URL : PROD_BACKEND_URL;
 
 const api = axios.create({ baseURL: BASE_URL, timeout: 12000 });

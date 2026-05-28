@@ -1,6 +1,8 @@
 import axios from 'axios';
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
-
+const api = axios.create({
+  baseURL: 'https://tankpilot-backend.onrender.com/api',
+  timeout: 10000,
+});
 const api = axios.create({ baseURL: '/api', timeout: 10000 });
 
 export async function calculateStations({ userLat, userLng, fillAmount, consumption, fuelType, radius }) {

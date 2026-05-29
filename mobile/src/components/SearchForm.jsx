@@ -3,7 +3,6 @@ import {
   View, Text, TextInput, TouchableOpacity,
   FlatList, StyleSheet, ActivityIndicator,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import * as Location from 'expo-location';
 import { geocodeAddress } from '../services/api';
 
@@ -134,16 +133,18 @@ export default function SearchForm({ onSearch, loading }) {
 
       {/* Kraftstoffart Picker */}
       <Text style={s.label}>Kraftstoffart</Text>
-      <View style={s.pickerWrapper}>
-        <Picker
-          selectedValue={form.fuelType}
-          onValueChange={v => handleField('fuelType', v)}
-          style={s.picker}
-        >
-          <Picker.Item label="Super E5"  value="e5"     />
-          <Picker.Item label="Super E10" value="e10"    />
-          <Picker.Item label="Diesel"    value="diesel" />
-        </Picker>
+      <View style={s.fuelRow}>
+        {[['e5','E5'],['e10','E10'],['diesel','Diesel']].map(([val, label]) => (
+          <TouchableOpacity
+            key={val}
+            style={[s.fuelBtn, form.fuelType === val && s.fuelBtnActive]}
+            onPress={() => handleField('fuelType', val)}
+          >
+            <Text style={[s.fuelBtnText, form.fuelType === val && s.fuelBtnTextActive]}>
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <TouchableOpacity
@@ -179,4 +180,9 @@ const s = StyleSheet.create({
   btnDisabled:   { opacity: 0.6 },
   btnSecondary:  { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#ccc', paddingHorizontal: 14, justifyContent: 'center' },
   btnSecondaryText: { fontSize: 13, color: '#333' },
+  fuelRow:          { flexDirection: 'row', gap: 8 },
+  fuelBtn:          { flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ccc', alignItems: 'center', backgroundColor: '#fff' },
+  fuelBtnActive:    { backgroundColor: '#2563eb', borderColor: '#2563eb' },
+  fuelBtnText:      { fontSize: 14, color: '#333' },
+  fuelBtnTextActive:{ color: '#fff', fontWeight: '600' },
 });

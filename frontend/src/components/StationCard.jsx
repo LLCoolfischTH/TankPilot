@@ -71,7 +71,7 @@ export default function StationCard({ station, rank }) {
           rel="noreferrer"
           style={{ fontSize: 12, color: '#fff', background: '#16a34a', borderRadius: 5, padding: '4px 10px', textDecoration: 'none', fontWeight: 600 }}
         >
-          🗺️ Navigation
+           Google Maps
         </a>
         <button type="button" onClick={() => setOpen(v => !v)}
           style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>

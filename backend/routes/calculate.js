@@ -4,12 +4,14 @@ const { buildBreakdown, calculateSavings } = require('../services/costCalculator
 const { getDistance, haversineDistance }   = require('../services/routeService');
 const tankerkoenigService = require('../services/tankerkoenigService');
 const econtrolService     = require('../services/econtrolService');
+const franceService = require('../services/franceService');
 const hereService         = require('../services/hereService');
 const { detectCountries, summarize } = require('../services/countryDetector');
 
 const SERVICE = {
   tankerkoening: (p) => tankerkoenigService.getStations(p),
   econtrol:      (p) => econtrolService.getStations(p),
+  france:        (p) => franceService.getStations(p), 
   here:          (p) => hereService.getStations(p),
 };
 

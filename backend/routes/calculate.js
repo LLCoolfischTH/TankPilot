@@ -16,7 +16,7 @@ const SERVICE = {
 };
 
 const ORS_TOP_N    = 5;
-const MAX_STATIONS = 15;
+const MAX_STATIONS = 50;
 
 router.post('/', async (req, res, next) => {
   try {

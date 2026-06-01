@@ -66,7 +66,7 @@ export default function StationCard({ station, rank }) {
       {/* Aktionen */}
       <div style={{ display: 'flex', gap: 12, marginTop: 10, alignItems: 'center' }}>
         <a
-          href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}&travelmode=driving`}
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(station.name + ' ' + station.address)}&query_place_id=&center=${station.lat.toFixed(7)},${station.lng.toFixed(7)}`}
           target="_blank"
           rel="noreferrer"
           style={{ fontSize: 12, color: '#fff', background: '#16a34a', borderRadius: 5, padding: '4px 10px', textDecoration: 'none', fontWeight: 600 }}

@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { geocodeAddress } from '../services/api';
 
 const DEFAULTS = {
-  userLat: 47.8415, userLng: 12.9685, 
+  userLat: 47.841822, userLng: 12.968288,
   fillAmount: 40, consumption: 7.5,
   fuelType: 'e5', radius: 15,
 };
@@ -21,7 +21,7 @@ export default function SearchForm({ onSearch, loading, onLocationChange }) {
   const [query,        setQuery]        = useState('Freilassing, Deutschland');
   const [suggestions,  setSugg]         = useState([]);
   const [geocoding,    setGeocoding]    = useState(false);
-  const [resolved,     setResolved]     = useState('Freilassing');
+  const [resolved,     setResolved]     = useState('Freilassing, Deutschland');
   const debounce = useRef(null);
 
   function handleField(key, val) {
@@ -30,7 +30,7 @@ export default function SearchForm({ onSearch, loading, onLocationChange }) {
 
   function setLocation(lat, lng, label) {
     setForm(prev => ({ ...prev, userLat: lat, userLng: lng }));
-    setResolved(`${label} · ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    setResolved(`${label} · ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
     setSugg([]);
     // Karte sofort zentrieren
     onLocationChange?.({ lat, lng });

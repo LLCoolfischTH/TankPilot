@@ -1,37 +1,42 @@
 const axios = require('axios');
 
-/**
- * TankPilot – RouteService
- *
- * Strategie gegen ORS 429 (Rate Limit: 40 Req/min Free Tier):
- *   1. Aggressives Caching (koordinatenbasiert, 1h TTL)
- *   2. Eingebauter Throttler: max. 1 ORS-Request alle 1.6s (≈37/min)
- *   3. Automatischer Retry mit Backoff bei 429
- *   4. Fallback: Haversine × 1.3 wenn ORS fehlschlägt
- */
-
-// ── Cache ──────────────────────────────────────────────────────────────────────
 const CACHE   = new Map();
-const TTL_MS  = 60 * 60 * 1000; // 1 Stunde – Straßendistanzen ändern sich kaum
+const TTL_MS  = 60 * 60 * 1000;
 
-// Koordinaten auf ~100m runden für Cache-Treffer
+// Parallel-Limiter: max. gleichzeitige ORS-Anfragen
+const MAX_CONCURRENT = 3;
+let   activeRequests = 0;
+const queue          = [];
+
 function roundCoord(c) { return Math.round(c * 1000) / 1000; }
 function cacheKey(from, to) {
   return `${roundCoord(from.lat)},${roundCoord(from.lng)}->${roundCoord(to.lat)},${roundCoord(to.lng)}`;
 }
 
-// ── Throttler ─────────────────────────────────────────────────────────────────
-let lastOrsCall = 0;
-const ORS_MIN_INTERVAL_MS = 1600; // 1 Request alle 1.6s = ~37/min (unter Limit von 40)
-
-async function waitForOrsSlot() {
-  const now  = Date.now();
-  const wait = Math.max(0, lastOrsCall + ORS_MIN_INTERVAL_MS - now);
-  if (wait > 0) await new Promise(r => setTimeout(r, wait));
-  lastOrsCall = Date.now();
+// Gibt einen Slot frei und startet den nächsten wartenden Call
+function releaseSlot() {
+  activeRequests--;
+  if (queue.length > 0) {
+    const next = queue.shift();
+    next();
+  }
 }
 
-// ── Hauptfunktion ─────────────────────────────────────────────────────────────
+// Wartet auf einen freien Slot, dann führt fn() aus
+function withSlot(fn) {
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      activeRequests++;
+      fn().then(resolve).catch(reject).finally(releaseSlot);
+    };
+    if (activeRequests < MAX_CONCURRENT) {
+      run();
+    } else {
+      queue.push(run);
+    }
+  });
+}
+
 async function getDistance(from, to) {
   const key    = cacheKey(from, to);
   const cached = CACHE.get(key);
@@ -42,17 +47,15 @@ async function getDistance(from, to) {
   const apiKey = process.env.ORS_API_KEY;
   if (apiKey && apiKey !== 'dein_ors_api_key_hier') {
     try {
-      await waitForOrsSlot();
-
-      const resp = await axios.get(
-        'https://api.openrouteservice.org/v2/directions/driving-car', {
+      const resp = await withSlot(() =>
+        axios.get('https://api.openrouteservice.org/v2/directions/driving-car', {
           params: {
             api_key: apiKey,
             start:   `${from.lng},${from.lat}`,
             end:     `${to.lng},${to.lat}`,
           },
-          timeout: 6000,
-        }
+          timeout: 8000,
+        })
       );
 
       const meters = resp.data.features[0].properties.segments[0].distance;
@@ -61,12 +64,9 @@ async function getDistance(from, to) {
       return { km, method: 'navigation' };
 
     } catch (err) {
-      if (err.response?.status === 429) {
-        console.warn('[ORS] 429 Rate Limit – nutze Haversine-Fallback für diese Station');
-      } else {
-        console.warn('[ORS] Fehler:', err.message);
-      }
-      // Fallthrough → Haversine
+      console.warn('[ORS]', err.response?.status === 429
+        ? '429 Rate Limit – Haversine-Fallback'
+        : err.message);
     }
   }
 
@@ -75,7 +75,6 @@ async function getDistance(from, to) {
   return { km, method: 'estimate' };
 }
 
-// ── Haversine ─────────────────────────────────────────────────────────────────
 function haversineDistance(from, to) {
   const R    = 6371;
   const dLat = toRad(to.lat - from.lat);

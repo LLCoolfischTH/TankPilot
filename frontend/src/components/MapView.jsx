@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -11,21 +11,26 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+// Blauer Marker für beste Tankstelle
 const bestIcon = new L.Icon({
-  iconUrl:       'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize:  [25, 41], iconAnchor:  [12, 41], popupAnchor: [1, -34],
+  iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+  shadowUrl:  'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize:   [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
+});
+
+// Roter Marker für Nutzerstandort
+const userIcon = new L.Icon({
+  iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+  shadowUrl:  'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize:   [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
 });
 
 const FLAG = { DE:'🇩🇪', AT:'🇦🇹', PL:'🇵🇱', CZ:'🇨🇿' };
 
-// Interne Komponente – reagiert auf Standortänderungen und zentriert die Karte
 function MapCenterer({ center }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
-      map.flyTo([center.lat, center.lng], map.getZoom(), { duration: 1 });
-    }
+    if (center) map.flyTo([center.lat, center.lng], map.getZoom(), { duration: 1 });
   }, [center?.lat, center?.lng]);
   return null;
 }
@@ -35,30 +40,22 @@ export default function MapView({ stations, userLocation }) {
 
   return (
     <div style={{ height: 350, borderRadius: 10, overflow: 'hidden', marginBottom: 20, border: '1px solid #e5e7eb' }}>
-      <MapContainer
-        center={[center.lat, center.lng]}
-        zoom={12}
-        style={{ height: '100%', width: '100%' }}
-      >
+      <MapContainer center={[center.lat, center.lng]} zoom={12} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
         />
 
-        {/* Zentriert die Karte wenn sich userLocation ändert */}
         <MapCenterer center={userLocation} />
 
-        {/* Nutzerstandort-Kreis */}
+        {/* Nutzerstandort – roter Marker */}
         {userLocation && (
-          <Circle
-            center={[userLocation.lat, userLocation.lng]}
-            radius={300}
-            color="#2563eb"
-            fillOpacity={0.15}
-          />
+          <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
+            <Popup>📍 Dein Standort</Popup>
+          </Marker>
         )}
 
-        {/* Tankstellen-Marker */}
+        {/* Tankstellen */}
         {stations.map((station, i) => (
           <Marker
             key={station.stationId || i}

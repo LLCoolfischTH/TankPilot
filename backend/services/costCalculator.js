@@ -1,15 +1,3 @@
-/**
- * TankPilot – Kern-Algorithmus
- *
- * Gesamtkosten = Tankkosten + Umwegkosten
- *
- *   Tankkosten  = fillAmount × pricePerLiter
- *   Umwegkosten = (detourKm × 2 × consumption / 100) × referencePrice
- *
- * Der Umweg wird doppelt gezählt (Hin- UND Rückfahrt).
- * "Lohnt es sich?" → wenn Gesamtkosten < Referenz-Gesamtkosten
- */
-
 function calculateTotalCost({ pricePerLiter, fillAmount, detourKm, consumption, referencePrice }) {
   const fuelCost = pricePerLiter * fillAmount;
   const detourFuelLiters = (detourKm * 2 * consumption) / 100;
@@ -17,15 +5,15 @@ function calculateTotalCost({ pricePerLiter, fillAmount, detourKm, consumption, 
   return fuelCost + detourCost;
 }
 
-/**
- * Gibt eine vollständige Aufschlüsselung der Berechnung zurück –
- * damit der Nutzer nachvollziehen kann, wie der Preis zustande kommt.
- */
 function buildBreakdown({ pricePerLiter, fillAmount, detourKm, consumption, referencePrice }) {
   const fuelCost = pricePerLiter * fillAmount;
   const detourFuelLiters = (detourKm * 2 * consumption) / 100;
   const detourCost = detourFuelLiters * referencePrice;
   const totalCost = fuelCost + detourCost;
+
+  // .toFixed() gegen null/undefined absichern
+  const priceFmt = (pricePerLiter ?? 0).toFixed(3);
+  const refFmt   = (referencePrice   ?? 0).toFixed(3);
 
   return {
     fuelCost:         Math.round(fuelCost * 100) / 100,
@@ -33,7 +21,7 @@ function buildBreakdown({ pricePerLiter, fillAmount, detourKm, consumption, refe
     detourFuelLiters: Math.round(detourFuelLiters * 100) / 100,
     detourCost:       Math.round(detourCost * 100) / 100,
     totalCost:        Math.round(totalCost * 100) / 100,
-    formula: `${fillAmount} L × ${pricePerLiter.toFixed(3)} €/L + (${detourKm} km × 2 × ${consumption} L/100km / 100) × ${referencePrice.toFixed(3)} €/L`,
+    formula: `${fillAmount} L × ${priceFmt} €/L + (${detourKm} km × 2 × ${consumption} L/100km / 100) × ${refFmt} €/L`,
   };
 }
 

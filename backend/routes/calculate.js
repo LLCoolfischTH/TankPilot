@@ -1,17 +1,17 @@
 const express  = require('express');
 const router   = express.Router();
 const { buildBreakdown, calculateSavings } = require('../services/costCalculator');
-const { getDistance, haversineDistance }   = require('../services/routeService');
+const { getDistance, haversineDistance } = require('../services/routeService');
 const tankerkoenigService = require('../services/tankerkoenigService');
 const econtrolService     = require('../services/econtrolService');
-const franceService = require('../services/franceService');
+const franceService       = require('../services/franceService');
 const hereService         = require('../services/hereService');
 const { detectCountries, summarize } = require('../services/countryDetector');
 
 const SERVICE = {
   tankerkoening: (p) => tankerkoenigService.getStations(p),
   econtrol:      (p) => econtrolService.getStations(p),
-  france:        (p) => franceService.getStations(p), 
+  france:        (p) => franceService.getStations(p),
   here:          (p) => hereService.getStations(p),
 };
 
@@ -23,9 +23,7 @@ router.post('/', async (req, res, next) => {
     const { userLat, userLng, fillAmount, consumption, fuelType = 'e5', radius = 15 } = req.body;
 
     if (!userLat || !userLng || !fillAmount || !consumption) {
-      return res.status(400).json({
-        error: 'userLat, userLng, fillAmount und consumption sind Pflichtfelder.',
-      });
+      return res.status(400).json({ error: 'userLat, userLng, fillAmount und consumption sind Pflichtfelder.' });
     }
 
     const fill    = parseFloat(fillAmount);
@@ -35,15 +33,15 @@ router.post('/', async (req, res, next) => {
     const detected = detectCountries(user.lat, user.lng);
     const { codes, isBorder } = summarize(detected);
 
-    // ── 1. Stationen laden ───────────────────────────────────────────────────
+    // ── 1. Stationen laden ────────────────────────────────────────────────────
     const serviceErrors = [];
     const allStations   = [];
 
     for (const { code, service } of detected) {
       try {
-        const stations = await SERVICE[service]({
-          lat: user.lat, lng: user.lng, radius, type: fuelType, country: code,
-        });
+        const fn = SERVICE[service];
+        if (!fn) continue;
+        const stations = await fn({ lat: user.lat, lng: user.lng, radius, type: fuelType, country: code });
         stations.forEach(s => allStations.push({ ...s, country: code, dataSource: service }));
       } catch (err) {
         const httpStatus = err.response?.status;
@@ -65,11 +63,19 @@ router.post('/', async (req, res, next) => {
       });
     }
 
-    const referencePrice = Math.min(...allStations.map(s => s.price));
+    // ── 2. Referenzpreis = nächste Station ────────────────────────────────────
+    // Richtige Frage: "Lohnt es sich zur ENTFERNTEREN Station zu fahren statt
+    // zur NÄCHSTEN?" → Referenz ist die nächstgelegene, nicht die günstigste.
+    const withDistance = allStations.map(s => ({
+      ...s,
+      airlineKm: haversineDistance(user, { lat: s.lat, lng: s.lng }),
+    }));
+    const nearestStation  = withDistance.reduce((a, b) => a.airlineKm <= b.airlineKm ? a : b);
+    const referencePrice  = nearestStation.price;
 
-    // ── 2. Haversine-Vorsortierung → Top MAX_STATIONS ────────────────────────
-    const withEst = allStations.map(s => {
-      const estKm   = Math.round(haversineDistance(user, { lat: s.lat, lng: s.lng }) * 1.3 * 10) / 10;
+    // ── 3. Haversine-Vorsortierung → Top MAX_STATIONS ─────────────────────────
+    const withEst = withDistance.map(s => {
+      const estKm   = Math.round(s.airlineKm * 1.3 * 10) / 10;
       const estCost = buildBreakdown({
         pricePerLiter: s.price, fillAmount: fill,
         detourKm: estKm, consumption: consume, referencePrice,
@@ -77,7 +83,7 @@ router.post('/', async (req, res, next) => {
       return { ...s, estKm, estCost };
     }).sort((a, b) => a.estCost - b.estCost).slice(0, MAX_STATIONS);
 
-    // ── 3. ORS für Top-N parallel ────────────────────────────────────────────
+    // ── 4. ORS für Top-N ──────────────────────────────────────────────────────
     const results = await Promise.all(
       withEst.map(async (s, i) => {
         let distanceKm, distanceMethod;
@@ -93,22 +99,29 @@ router.post('/', async (req, res, next) => {
           pricePerLiter: s.price, fillAmount: fill,
           detourKm: distanceKm, consumption: consume, referencePrice,
         });
-        const refCost = buildBreakdown({
-          pricePerLiter: referencePrice, fillAmount: fill,
-          detourKm: 0, consumption: consume, referencePrice,
-        }).totalCost;
+
+        // Referenzkosten: nächste Station, kein Umweg
+        const refCost = referencePrice * fill;
         const savings = calculateSavings(breakdown.totalCost, refCost);
 
         return {
-          stationId: s.id, name: s.name || s.brand, brand: s.brand,
-          address: `${s.street}, ${s.place}`.replace(/^,\s*/, ''),
-          lat: s.lat, lng: s.lng, isOpen: s.isOpen,
-          country: s.country, dataSource: s.dataSource,
-          pricePerLiter: s.price, currency: s.currency || 'EUR',
-          priceLocal: s.priceLocal || null,
-          distanceKm, distanceMethod, breakdown,
-          savings:  Math.round(savings * 100) / 100,
-          worthIt:  savings > 0,
+          stationId:     s.id,
+          name:          s.name || s.brand,
+          brand:         s.brand,
+          address:       `${s.street}, ${s.place}`.replace(/^,\s*/, ''),
+          lat:           s.lat,
+          lng:           s.lng,
+          isOpen:        s.isOpen,
+          country:       s.country,
+          dataSource:    s.dataSource,
+          pricePerLiter: s.price,
+          currency:      s.currency  || 'EUR',
+          priceLocal:    s.priceLocal || null,
+          distanceKm,
+          distanceMethod,
+          breakdown,
+          savings:       Math.round(savings * 100) / 100,
+          worthIt:       savings > 0,
         };
       })
     );
@@ -118,6 +131,7 @@ router.post('/', async (req, res, next) => {
     res.json({
       results, count: results.length,
       countries: codes, borderRegion: isBorder, referencePrice,
+      nearestStationPrice: referencePrice,
       serviceErrors: serviceErrors.length > 0 ? serviceErrors : undefined,
     });
 

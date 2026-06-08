@@ -134,7 +134,7 @@ export default function SearchForm({ onSearch, loading, onLocationChange }) {
         </div>
         <div>
           <label style={s.label}>Suchradius (km)</label>
-          <input style={s.input} type="number" min="1" max="50"
+          <input style={s.input} type="number" min="1" max="200"
             value={form.radius} onChange={e => handleField('radius', e.target.value)} required />
         </div>
       </div>
